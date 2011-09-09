@@ -1,2 +1,2 @@
 	window.connrsBackboneBoilerplate = cbb;
-})(this, document, this.Backbone, this,Handlebars);
+})(this, document, this.Backbone, this.Handlebars);

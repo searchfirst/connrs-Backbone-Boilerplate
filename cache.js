@@ -19,11 +19,16 @@
 				}
 			},
 			list: function() {
-				if (arguments[0] != undefined) {
+				if (arguments[0] !== undefined) {
 					var snippet = arguments[0],
 							regMatch = new RegExp('^'+snippet),
 							fLoaded = {},
-							keys = _(_(loaded).keys()).chain().select(function(v){ return !!v.match(regMatch)}).value();
+							keys = _(_(loaded).keys())
+								.chain()
+								.select(function(v){
+									return !!v.match(regMatch);
+								})
+								.value();
 					_(keys).each(function(v,k) { fLoaded[k] = v; });
 					return fLoaded;
 				} else {
