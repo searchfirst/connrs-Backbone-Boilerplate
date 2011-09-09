@@ -348,7 +348,7 @@
 				if (options.context) {
 					this.context = options.context;
 				}
-				if (options.viewTemplate) {
+				if (options.viewTemplate !== undefined) {
 					if (typeof options.viewTemplate === 'string') {
 						this.viewTemplate = this.templates.compile(options.viewTemplate);
 					} else {
