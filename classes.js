@@ -428,13 +428,30 @@
         },
         renderAddForm: function(e) {
             e.preventDefault();
-            var $thisel = $(this.el),
+            var $thisEl = $(this.el),
                 formTemplate = this.templates.compile(this.modelName.toLowerCase() + 'ItemAdd'),
-                data = this._extendDataWithExtras({ customer_id: this.collection.params.customer_id }),
-                $pForm = $thisel.find('.p_form'),
+                //data = this._extendDataWithExtras({ customer_id: this.collection.params.customer_id }),
+                data = {
+                    customer_id: this.collection.params.customer_id
+                },
+                $pForm = $thisEl.find('.p_form'),
                 $form = $(formTemplate(data)).insertBefore($pForm.get(0));
     
             this.commonWidgets($form);
+            for (i in this.extras) {
+                var extra = this.extras[i],
+                    extraView = new cbb.MiniListView({
+                        collection: extra.collection,
+                        findEl: extra.config.findEl,
+                        keyName: extra.config.keyName,
+                        modelFieldName: extra.config.modelFieldName,
+                        parentModel: this.parentModel,
+                        parentView: this,
+                        $parentViewEl: $thisEl,
+                        valueName: extra.config.valueName
+                    });
+                extraView.render();
+            }
             $pForm.fadeOut('fast');
         },
         _extendDataWithExtras: function(data) {
@@ -479,7 +496,26 @@
                     } else {
                         $thisEl.append(itemView.render().el);
                     }
+                    if (this.extras !== undefined && typeof this.extras === 'object') {
+                        for (i in this.extras) {
+                            var extra = this.extras[i],
+                                config = extra.config,
+                                miniListView = new cbb.MiniListView({
+                                    collection: extra.collection,
+                                    findEl: config.findEl,
+                                    keyName: config.keyName,
+                                    modelFieldName: config.modelFieldName,
+                                    parentModel: model,
+                                    parentView: itemView,
+                                    $parentViewEl: itemView.el,
+                                    valueName: config.valueName
+                                });
+                        }
+                    }
                     $(itemView.el).trigger('rendered');
+                    this.bind('rendered', function() {
+                        this.trigger('rendered');
+                    }, itemView);
                 }
                 $thisEl.append(paginationTemplate({
                     model: this.modelName,
@@ -490,21 +526,6 @@
                 $thisEl.append(this.templates.compile('emptyCollection')({
                     modelName: this.modelName
                 }));
-            }
-            if (this.extras !== undefined && typeof this.extras === 'object') {
-                for (i in this.extras) {
-                    var extra = this.extras[i],
-                        config = extra.config,
-                        miniListView = new cbb.MiniListView({
-                            collection: extra.collection,
-                            findEl: config.findEl,
-                            keyName: config.keyName,
-                            modelFieldName: config.modelFieldName,
-                            parentView: this,
-                            $parentViewEl: $thisEl,
-                            valueName: config.valueName
-                        });
-                }
             }
             if (this.showButtons) {
                 $thisEl.append(buttonTemplate());
@@ -517,6 +538,10 @@
         initialize: function(options) {
             cbb.View.prototype.initialize.call(this, options);
             if (options !== undefined) {
+                if (options.allowEmpty !== undefined) {
+                    this.allowEmpty = options.allowEmpty;
+                    delete options.allowEmpty;
+                }
                 if (options.findEl !== undefined) {
                     this.findEl = options.findEl;
                     delete options.findEl;
@@ -551,13 +576,13 @@
         render: function() {
             var self = this,
                 $thisEl = $(this.findEl,this.$parentViewEl),
-                data = '';
+                data = this.allowEmpty === true ? '<option value=""></option>' : '';
             this.collection.forEach(function(model){
                 data += '<' + self.tagName + ' value="' + model.get(self.keyName) + '">' + model.get(self.valueName) + '</' + self.tagName + '>';
             });
             $thisEl.html(data);
             if (this.parentModel !== undefined) {
-                $parentViewEl.val(this.parentModel.get(this.modelFieldName));
+                $thisEl.val(this.parentModel.get(this.modelFieldName));
             }
         }
     });
