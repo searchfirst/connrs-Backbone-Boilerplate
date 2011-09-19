@@ -12,12 +12,6 @@
         }
     });
     cbb.Router = Backbone.Router.extend({
-        /*initialize: function(options) {
-            this.bind('route',function(){
-                this.viewVars = {};
-                this.viewTemplate = false;
-            });
-        },*/
         parseData: function() {
             if (window.location && window.location.search) {
                 var rawMeat = window.location.search.substr(1).split('&'),
@@ -49,17 +43,7 @@
             } else { return false; }
         },
         templates: cbb.templates,
-        render: function(template,data) {this.view.render(this.templates.compile(template),data);},
-        /*route: function(route, name, callback) {
-            Backbone.history || (Backbone.history = new Backbone.History);
-            if (!_.isRegExp(route)) route = this._routeToRegExp(route);
-            Backbone.history.route(route, _.bind(function(fragment) {
-                var args = this._extractParameters(route, fragment);
-                callback.apply(this, args);
-                this.trigger.apply(this, ['route:' + name].concat(args));
-                this.trigger.apply(this, ['route']);
-            }, this));
-        }*/
+        render: function(template,data) {this.view.render(this.templates.compile(template),data);}
     });
     cbb.Collection = Backbone.Collection.extend({
         initialize: function(options) {
@@ -416,6 +400,7 @@
                     delete options.events;
                 }
             }
+            this.commonWidgets($(this.el));
         },
         events: {
             'click .next': 'next',
