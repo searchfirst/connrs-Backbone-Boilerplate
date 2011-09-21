@@ -366,7 +366,7 @@
             return this;
         },
         rendering: function() {
-            $(this.el).fadeTo(0.5,0.5);
+            $(this.el).addClass('fading', 500);
             return this;
         },
         filterBy: function(e) {
@@ -375,7 +375,7 @@
             this.collection.fetch();
         },
         afterRender: function() {
-            $(this.el).fadeTo(0.5,1);
+            $(this.el).removeClass('fading', 500);
             return this;
         }
     });
@@ -391,6 +391,7 @@
             $(self.el).addClass('paginated');
             self.collection
                 .bind('add', self.redrawItems, self)
+                .bind('reset', self.redrawItems, self)
                 .bind('fetched', self.redrawItems ,self)
                 .bind('fetching', self.fetchingItems, self);
             if (options) {
@@ -409,7 +410,7 @@
             'submit form[action*="add"]': 'add'
         },
         fetchingItems: function() {
-            $(this.el).fadeTo(0.5,0.5);
+            $(this.el).addClass('fading', 500);
         },
         renderAddForm: function(e) {
             e.preventDefault();
@@ -516,7 +517,7 @@
                 $thisEl.append(buttonTemplate());
             }
             this.trigger('rendered');
-            $thisEl.fadeTo(0.5,1);
+            $thisEl.removeClass('fading', 500);
         }
     });
     cbb.MiniListView = cbb.View.extend({
