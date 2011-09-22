@@ -233,7 +233,7 @@
             return this;
         },
         redirect: function(url) {
-            this.router.navigate(url);
+            this.router.navigate(url, true);
         },
         add: function(e) {
             e.preventDefault();
