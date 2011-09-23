@@ -52,6 +52,10 @@
                 if (options.page !== undefined && options.page != 0) {
                     this.page = options.page;
                 }
+                if (options.baseUrl !== undefined) {
+                    this.baseUrl = options.baseUrl;
+                    delete options.baseUrl;
+                }
                 if (options.params && typeof options.params == 'object') {
                     this.params = options.params;
                 }
@@ -400,6 +404,12 @@
                     _(this.events).extend(options.events);
                     delete options.events;
                 }
+                if (options.itemListTemplateStem !== undefined) {
+                    this.itemListTemplateStem = options.itemListTemplateStem;
+                    delete options.itemListTemplateStem;
+                } else {
+                    this.itemListTemplateStem = 'ItemView';
+                }
             }
             this.commonWidgets($(this.el));
         },
@@ -472,7 +482,7 @@
                     var model = this.collection.models[i],
                         itemView = new cbb.ItemView({
                             tagName: this.itemTagName,
-                            viewTemplate: this.modelName.toLowerCase() + 'ItemView',
+                            viewTemplate: this.modelName.toLowerCase() + this.itemListTemplateStem,
                             widgets: this.itemWidgets,
                             model: model
                         });
