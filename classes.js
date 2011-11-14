@@ -9,6 +9,12 @@
                 self.trigger('fetched');
             };
             Backbone.Model.prototype.fetch.call(self, options);
+        },
+        initialize: function(options) {
+            Backbone.Model.prototype.initialize.call(this, options);
+            if (options.childOptions) {
+                this.childOptions = options.childOptions;
+            }
         }
     });
     cbb.Router = Backbone.Router.extend({
@@ -57,15 +63,19 @@
                     delete options.baseUrl;
                 }
                 if (options.params && typeof options.params == 'object') {
-                    this.params = options.params;
+                    this.params = _.clone(options.params);
                 }
                 if (options.modelName !== undefined) {
                     this.modelName = options.modelName;
                 }
                 if (options.watch !== undefined) {
-                    var wItem = options.watch.parent,
-                        wEvent = options.watch.event;
-                    wItem.bind(wEvent, self.fetch, self);
+                    if (_.isArray(options.watch)) {
+                        _(options.watch).each(function(element, index, list) {
+                            element[index].parent.bind(element[index].event, this.fetch, this);
+                        }, this);
+                    } else {
+                        options.watch.parent.bind(options.watch.event, this.fetch, this);
+                    }
                 }
             }
         },
@@ -158,34 +168,54 @@
     cbb.View = Backbone.View.extend({
         initialize: function(options) {
             if (options) {
-                if (options.router !== undefined) {this.router = options.router; delete options.router; }
-                if (options.model !== undefined) { this.model = options.model; delete options.model; }
-                if (options.widgets !== undefined) { this.widgets = options.widgets; delete options.widgets; }
-                if (options.itemWidgets !== undefined) { this.itemWidgets = options.itemWidgets; delete options.itemWidgets; }
-                if (options.modelName !== undefined) { this.modelName = options.modelName; delete options.modelName; }
-                if (options.itemTagName !== undefined) { this.itemTagName = options.itemTagName; delete options.itemTagName; }
-                if (options.extras !== undefined) { this.extras = options.extras; delete options.extras; }
-                if (options.parentModel !== undefined) { this.parentModel = options.parentModel; delete options.parentModel; }
+                if (options.router) {
+                    this.router = options.router;
+                }
+                if (options.model) {
+                    this.model = options.model;
+                }
+                if (options.widgets) {
+                    this.widgets = options.widgets;
+                }
+                if (options.itemWidgets) {
+                    this.itemWidgets = options.itemWidgets;
+                }
+                if (options.modelName) {
+                    this.modelName = options.modelName;
+                }
+                if (options.itemTagName) {
+                    this.itemTagName = options.itemTagName;
+                }
+                if (options.extras) {
+                    this.extras = options.extras;
+                }
+                if (options.parentModel) {
+                    this.parentModel = options.parentModel;
+                }
                 if (options.gotoViewOnAdd !== undefined) {
                     this.gotoViewOnAdd = options.gotoViewOnAdd;
-                    delete options.gotoViewOnAdd;
                 }
                 if (options.hideFormOnSubmit !== undefined) {
                     this.hideFormOnSubmit = options.hideFormOnSubmit;
-                    delete options.hideFormOnSubmit;
                 }
                 if (options.showButtons !== undefined) {
                     this.showButtons = options.showButtons;
-                    delete options.showButtons;
+                }
+                if (options.parentView) {
+                    this.parentView = options.parentView;
+                    if (typeof this.redrawItems === 'function') {
+                        this.parentView.bind('renderChildren', this.redrawItems, this);
+                    }
                 }
             }
+            this.bind('rendered', this.rendered, this);
+            this.bind('rendering', this.rendering, this);
         },
         widgets: {
             // 'plugin selector': []
         },
         templates: cbb.templates,
         commonWidgets: function($rootElement) {
-            $rootElement.find('ul.tab_hooks').duxTab();
             for (widget in this.widgets) {
                 var eventSplitter = /^(\w+)\s*(.*)$/,
                     match = widget.match(eventSplitter),
@@ -264,7 +294,8 @@
                 }
             });
 
-            var newModel = new this.collection.model(model);
+            var newModel = new this.collection.model(model),
+                thisModel = this;
 
             newModel.save(null,{
                 success: function(model, response){
@@ -277,8 +308,8 @@
                     if (hideFormOnSubmit) {
                         $target.fadeOut('fast');
                     }
-                    if (this.parentModel && this.parentModel.trigger) {
-                        this.parentModel.trigger('childAdd');
+                    if (thisModel.parentModel && thisModel.parentModel.trigger) {
+                        thisModel.parentModel.trigger('childAdd');
                     }
                 },
                 error: function(model, response) {
@@ -327,6 +358,15 @@
         prev: function() {
             this.collection.previousPage();
             return false;
+        },
+        rendering: function() {
+            $(this.el).addClass('fading');
+            return this;
+        },
+        rendered: function() {
+            $(this.el).removeClass('fading');
+            this.trigger('renderChildren');
+            return this;
         }
     });
     cbb.PageView = cbb.View.extend({
@@ -346,11 +386,9 @@
                 if (options.events) {
                     this.events || ( this.events = {} );
                     _(this.events).extend(options.events);
-                    delete options.events;
                     this.delegateEvents();
                 }
             }
-            this.bind('rendered',this.afterRender,this);
         },
         render: function() {
             var $thisEl = $(this.el),
@@ -369,19 +407,15 @@
             $thisEl.trigger('rendered');
             return this;
         },
-        rendering: function() {
-            $(this.el).addClass('fading', 500);
-            return this;
-        },
         filterBy: function(e) {
             var filter = $(e.target).text();
             this.collection.params.filter = filter;
             this.collection.fetch();
         },
-        afterRender: function() {
-            $(this.el).removeClass('fading', 500);
+        resetSubViews: function() {
+            this.views = {};
             return this;
-        }
+        },
     });
     cbb.ListView = cbb.View.extend({
         modelName: undefined,
@@ -420,7 +454,7 @@
             'submit form[action*="add"]': 'add'
         },
         fetchingItems: function() {
-            $(this.el).addClass('fading', 500);
+            $(this.el).addClass('fading');
         },
         renderAddForm: function(e) {
             e.preventDefault();
@@ -527,7 +561,7 @@
                 $thisEl.append(buttonTemplate());
             }
             this.trigger('rendered');
-            $thisEl.removeClass('fading', 500);
+            $thisEl.removeClass('fading');
         }
     });
     cbb.MiniListView = cbb.View.extend({
