@@ -389,6 +389,8 @@
                     this.delegateEvents();
                 }
             }
+            this.bind('reset', this.resetData, this);
+            this.bind('reset', this.resetSubViews, this);
         },
         render: function() {
             var $thisEl = $(this.el),
@@ -411,6 +413,14 @@
             var filter = $(e.target).text();
             this.collection.params.filter = filter;
             this.collection.fetch();
+        },
+        resetData: function() {
+            if (this.model) {
+                delete this.model;
+            }
+            if (this.collection) {
+                delete this.collection;
+            }
         },
         resetSubViews: function() {
             this.views = {};
