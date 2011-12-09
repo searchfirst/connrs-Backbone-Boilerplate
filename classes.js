@@ -48,8 +48,8 @@
                 return p;
             } else { return false; }
         },
-        templates: cbb.templates,
-        render: function(template,data) {this.view.render(this.templates.compile(template),data);}
+        templates: cbb.templates
+        //render: function(template,data) {this.view.render(this.templates.compile(template),data);}
     });
     cbb.Collection = Backbone.Collection.extend({
         initialize: function(options) {
@@ -68,16 +68,27 @@
                 if (options.modelName !== undefined) {
                     this.modelName = options.modelName;
                 }
-                if (options.watch !== undefined) {
-                    if (_.isArray(options.watch)) {
-                        _(options.watch).each(function(element, index, list) {
+                if (options.watcher !== undefined) {
+                    if (_.isArray(options.watcher)) {
+                        _(options.watcher).each(function(element, index, list) {
                             element[index].parent.bind(element[index].event, this.fetch, this);
+                            if (this.viewWatcherIsReady(element)) {
+                                this.fetch();
+                            }
                         }, this);
                     } else {
-                        options.watch.parent.bind(options.watch.event, this.fetch, this);
+                        options.watcher.parent.bind(options.watcher.event, this.fetch, this);
+                        if (this.viewWatcherIsReady(options.watcher)) {
+                            this.fetch();
+                        }
                     }
                 }
             }
+        },
+        viewWatcherIsReady: function(watcher) {
+            var view = watcher.parent,
+                boundEventIsReady = watcher.event + 'Ready';
+            return view[boundEventIsReady] === true;
         },
         comparator: function(model) {
             var created = model.get('created');
@@ -351,21 +362,23 @@
             
             return r.success;
         },
-        next: function() {
+        next: function(event) {
+            event.preventDefault();
             this.collection.nextPage();
-            return false;
         },
-        prev: function() {
+        prev: function(event) {
+            event.preventDefault();
             this.collection.previousPage();
-            return false;
         },
         rendering: function() {
             $(this.el).addClass('fading');
+            this.renderChildrenReady = undefined;
             return this;
         },
         rendered: function() {
             $(this.el).removeClass('fading');
             this.trigger('renderChildren');
+            this.renderChildrenReady = true;
             return this;
         }
     });
