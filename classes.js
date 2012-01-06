@@ -10,11 +10,11 @@
             };
             Backbone.Model.prototype.fetch.call(self, options);
         },
-        initialize: function(options) {
-            Backbone.Model.prototype.initialize.call(this, options);
+        initialize: function(attributes, options) {
             if (options.childOptions) {
                 this.childOptions = options.childOptions;
             }
+            Backbone.Model.prototype.initialize.call(this, attributes, options);
         }
     });
     cbb.Router = Backbone.Router.extend({
@@ -49,7 +49,6 @@
             } else { return false; }
         },
         templates: cbb.templates
-        //render: function(template,data) {this.view.render(this.templates.compile(template),data);}
     });
     cbb.Collection = Backbone.Collection.extend({
         initialize: function(options) {
