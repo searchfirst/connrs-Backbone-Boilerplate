@@ -11,8 +11,10 @@
             Backbone.Model.prototype.fetch.call(self, options);
         },
         initialize: function(attributes, options) {
-            if (options.childOptions) {
-                this.childOptions = options.childOptions;
+            if (options !== undefined) {
+                if (options.childOptions !== undefined) {
+                    this.childOptions = options.childOptions;
+                }
             }
             Backbone.Model.prototype.initialize.call(this, attributes, options);
         }
