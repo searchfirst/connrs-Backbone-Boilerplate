@@ -72,13 +72,13 @@
                 if (options.watcher !== undefined) {
                     if (_.isArray(options.watcher)) {
                         _(options.watcher).each(function(element, index, list) {
-                            element[index].parent.bind(element[index].event, this.fetch, this);
+                            element[index].parent.on(element[index].event, this.fetch, this);
                             if (this.viewWatcherIsReady(element)) {
                                 this.fetch();
                             }
                         }, this);
                     } else {
-                        options.watcher.parent.bind(options.watcher.event, this.fetch, this);
+                        options.watcher.parent.on(options.watcher.event, this.fetch, this);
                         if (this.viewWatcherIsReady(options.watcher)) {
                             this.fetch();
                         }
@@ -179,63 +179,131 @@
     });
     cbb.View = Backbone.View.extend({
         initialize: function(options) {
-            if (options) {
-                if (options.router) {
-                    this.router = options.router;
-                }
-                if (options.model) {
-                    this.model = options.model;
-                }
-                if (options.widgets) {
-                    this.widgets = options.widgets;
-                }
-                if (options.itemWidgets) {
-                    this.itemWidgets = options.itemWidgets;
-                }
-                if (options.modelName) {
-                    this.modelName = options.modelName;
-                }
-                if (options.itemTagName) {
-                    this.itemTagName = options.itemTagName;
-                }
-                if (options.extras) {
-                    this.extras = options.extras;
-                }
-                if (options.parentModel) {
-                    this.parentModel = options.parentModel;
-                }
-                if (options.gotoViewOnAdd !== undefined) {
-                    this.gotoViewOnAdd = options.gotoViewOnAdd;
-                }
-                if (options.hideFormOnSubmit !== undefined) {
-                    this.hideFormOnSubmit = options.hideFormOnSubmit;
-                }
-                if (options.showButtons !== undefined) {
-                    this.showButtons = options.showButtons;
-                }
-                if (options.parentView) {
-                    this.parentView = options.parentView;
-                    if (typeof this.redrawItems === 'function') {
-                        this.parentView.bind('renderChildren', this.redrawItems, this);
-                    }
+            options = options || {};
+            this
+                .extendEvents(options.events)
+                .setExtras(options.extras)
+                .setGotoViewOnAdd(options.gotoViewOnAdd)
+                .setItemTagName(options.itemTagName)
+                .setItemWidgets(options.itemWidgets)
+                .setModel(options.model)
+                .setModelName(options.modelName)
+                .setShowButtons(options.showButtons)
+                .setHideFormOnSubmit(options.hideFormOnSubmit)
+                .setParentModel(options.parentModel)
+                .setParentView(options.parentView)
+                .setRouter(options.router)
+                .setWidgets(options.widgets)
+                .on('rendered', this.rendered, this)
+                .on('rendering', this.rendering, this);
+        },
+        widgets: {},
+        setExtras: function(extras) {
+            if (!_.isUndefined(extras)) {
+                this.extras = extras;
+            }
+            return this;
+        },
+        setGotoViewOnAdd: function(gotoViewOnAdd) {
+            if (!_.isUndefined(gotoViewOnAdd)) {
+                this.gotoViewOnAdd = gotoViewOnAdd;
+            }
+            return this;
+        },
+        setItemTagName: function(itemTagName) {
+            if (!_.isUndefined(itemTagName)) {
+                this.itemTagName = itemTagName;
+            }
+            return this;
+        },
+        setItemWidgets: function(itemWidgets) {
+            this.itemWidgets = this.itemWidgets || {};
+            if (!_.isUndefined(itemWidgets)) {
+                _(this.itemWidgets).extend(itemWidgets);
+            }
+            return this;
+        },
+        setModel: function(model) {
+            if (!_.isUndefined(model)) {
+                this.model = model;
+            }
+            return this;
+        },
+        setModelName: function(modelName) {
+            if (!_.isUndefined(modelName)) {
+                this.modelName = modelName;
+            }
+            return this;
+        },
+        setShowButtons: function(showButtons) {
+            if (!_.isUndefined(showButtons)) {
+                this.showButtons = showButtons;
+            }
+            return this;
+        },
+        setHideFormOnSubmit: function(hideFormOnSubmit) {
+            this.hideFormOnSubmit = false;
+            if (!_.isUndefined(hideFormOnSubmit)) {
+                this.hideFormOnSubmit = hideFormOnSubmit;
+            }
+            return this;
+        },
+        setParentModel: function(parentModel) {
+            if (!_.isUndefined(parentModel)) {
+                this.parentModel = parentModel;
+            }
+            return this;
+        },
+        setParentView: function(parentView) {
+            if (!_.isUndefined(parentView)) {
+                this.parentView = parentView;
+                if (_.isFunction(this.redrawItems)) {
+                    this.parentView.on('renderChildren', this.redrawItems, this);
                 }
             }
-            this.bind('rendered', this.rendered, this);
-            this.bind('rendering', this.rendering, this);
+            return this;
         },
-        widgets: {
-            // 'plugin selector': []
+        setRouter: function(router) {
+            if (!_.isUndefined(router)) {
+                this.router = router;
+            }
+            return this;
+        },
+        setWidgets: function(widgets) {
+            if (!_.isUndefined(widgets)) {
+                this.widgets = widgets;
+            }
+            return this;
+        },
+        extendEvents: function(events) {
+            if (_.isObject(events)) {
+                _(this.events).extend(events);
+                this.delegateEvents();
+            }
+            return this;
+        },
+        compileViewTemplate: function(viewTemplate) {
+            if (!_.isUndefined(viewTemplate)) {
+                if (_.isString(viewTemplate)) {
+                    this.viewTemplate = this.templates.compile(viewTemplate);
+                } else {
+                    this.viewTemplate = viewTemplate;
+                }
+            } else if (!_.isUndefined(this.viewTemplate)) {
+                if (_.isString(this.viewTemplate)) {
+                    this.viewTemplate = this.templates.compile(this.viewTemplate);
+                }
+            }
         },
         templates: cbb.templates,
-        commonWidgets: function($rootElement) {
+        commonWidgets: function() {
             for (widget in this.widgets) {
                 var eventSplitter = /^(\w+)\s*(.*)$/,
+                    callbackTypes = ['save', 'success', 'error'],
                     match = widget.match(eventSplitter),
-                    $selector = $(match[2],$rootElement.get()),
+                    $selector = this.$(match[2]),
                     method = match[1],
-                    params = this.widgets[widget],
-                    _params = [],
-                    $backboneEl = $(this.el),
+                    params = _.clone(this.widgets[widget]),
                     id,
                     title;
     
@@ -246,35 +314,29 @@
                     id = Math.random();
                     title = 'unknown';
                 }
-    
-                for (p in params) {
-                    _params[p] = _.clone(params[p]);
-                }
-    
-                for (a in _params) {
-                    for (b in _params[a]) {
-                        if (typeof _params[a][b] === 'string' && _params[a][b].match(/^cb_/)) {
-                            var callback = _params[a][b].substr(3);
-                            _params[a][b] = _.bind(this[callback],this);
-                        }
+
+                _(params).each(function(callback, type) {
+                    if (_(callbackTypes).include(type) && _.isString(callback)) {
+                        params[type] = _.bind(this[callback], this);
                     }
-                    _params[a].$backboneEl = $backboneEl;
-                    _params[a].id = id;
-                    _params[a].title = title;
-                }
-    
-                if (_params !== undefined) {
-                    $selector[method].apply($selector, _params);
+                }, this);
+                params.$backboneEl = this.$el;
+                params.id = id;
+                params.title = title;
+
+                if (!_.isUndefined(params)) {
+                    $selector[method].call($selector, params);
                 } else {
                     $selector[method]();
                 }
             }
+            return this;
         },
         render: function(template,data) {
-            var $thisel = typeof this.el == 'function' ? $(this.el()) : $(this.el);
-            if ($thisel.length > 0) {
-                $thisel.html(template(data));
-                this.commonWidgets($thisel);
+            var this$el = this.$el;
+            if (this$el.length > 0) {
+                this$el.html(template(data));
+                this.commonWidgets();
             }
             return this;
         },
@@ -386,28 +448,22 @@
     cbb.PageView = cbb.View.extend({
         initialize: function(options) {
             cbb.View.prototype.initialize.call(this,options);
+            this.compileViewTemplate(options.viewTemplate);
             if (options) {
                 if (options.context) {
                     this.context = options.context;
                 }
-                if (options.viewTemplate !== undefined) {
-                    if (typeof options.viewTemplate === 'string') {
-                        this.viewTemplate = this.templates.compile(options.viewTemplate);
-                    } else {
-                        this.viewTemplate = options.viewTemplate;
-                    }
-                }
-                if (options.events) {
-                    this.events || ( this.events = {} );
-                    _(this.events).extend(options.events);
-                    this.delegateEvents();
-                }
             }
-            this.bind('reset', this.resetData, this);
-            this.bind('reset', this.resetSubViews, this);
+            this.titleEl = document.getElementsByTagName('title')[0];
+            this.on('set_title', this.setTitle, this)
+                .on('reset', this.resetData, this)
+                .on('reset', this.resetSubViews, this);
+        },
+        setTitle: function(title) {
+            $(this.titleEl).text(title);
         },
         render: function() {
-            var $thisEl = $(this.el),
+            var this$el = this.$el,
                 data = {};
             if (this.context === 'model' && this.model !== undefined) {
                 data = this.model.toJSON();
@@ -417,10 +473,10 @@
             } else {
                 data = (this.context && this[this.context]) ? this[this.context].toJSON() : {};
             }
-            $thisEl.html(this.viewTemplate(data));
-            this.commonWidgets($thisEl);
-            this.trigger('rendered');
-            $thisEl.trigger('rendered');
+            this$el.html(this.viewTemplate(data));
+            this.commonWidgets()
+                .trigger('rendered');
+            this$el.trigger('rendered');
             return this;
         },
         filterBy: function(e) {
@@ -436,6 +492,11 @@
                 delete this.collection;
             }
         },
+        addSubView: function(name, viewClass) {
+            this.views = this.views || {};
+            this.views[name] = viewClass;
+            return this;
+        },
         resetSubViews: function() {
             this.views = {};
             return this;
@@ -448,28 +509,23 @@
         showButtons: true,
         hideFormOnSubmit: true,
         initialize: function(options) {
-            var self = this;
-            cbb.View.prototype.initialize.call(self, options);
-            $(self.el).addClass('paginated');
-            self.collection
-                .bind('add', self.redrawItems, self)
-                .bind('reset', self.redrawItems, self)
-                .bind('fetched', self.redrawItems ,self)
-                .bind('fetching', self.fetchingItems, self);
-            if (options) {
-                if (options.events !== undefined) {
-                    this.events || ( this.events = {} );
-                    _(this.events).extend(options.events);
-                    delete options.events;
-                }
-                if (options.itemListTemplateStem !== undefined) {
-                    this.itemListTemplateStem = options.itemListTemplateStem;
-                    delete options.itemListTemplateStem;
-                } else {
-                    this.itemListTemplateStem = 'ItemView';
-                }
+            cbb.View.prototype.initialize.call(this, options);
+            options = options || {};
+            this.collection
+                .on('add', this.redrawItems, this)
+                .on('reset', this.redrawItems, this)
+                .on('fetched', this.redrawItems ,this)
+                .on('fetching', this.fetchingItems, this);
+            this.setItemListTemplateStem(options.itemListTemplateStem)
+                .commonWidgets();
+        },
+        setItemListTemplateStem: function(templateStem) {
+            if (!_.isUndefined(templateStem)) {
+                this.itemListTemplateStem = templateStem;
+            } else if (_.isUndefined(this.itemListTemplateStem)) {
+                this.itemListTemplateStem = 'ItemView';
             }
-            this.commonWidgets($(this.el));
+            return this;
         },
         events: {
             'click .next': 'next',
@@ -478,17 +534,16 @@
             'submit form[action*="add"]': 'add'
         },
         fetchingItems: function() {
-            $(this.el).addClass('fading');
+            this.$el.addClass('fading');
         },
         renderAddForm: function(e) {
             e.preventDefault();
-            var $thisEl = $(this.el),
+            var this$el = this.$el,
                 formTemplate = this.templates.compile(this.modelName.toLowerCase() + 'ItemAdd'),
-                //data = this._extendDataWithExtras({ customer_id: this.collection.params.customer_id }),
                 data = {
                     customer_id: this.collection.params.customer_id
                 },
-                $pForm = $thisEl.find('.p_form'),
+                $pForm = this$el.find('.p_form'),
                 $form = $(formTemplate(data)).insertBefore($pForm.get(0));
     
             this.commonWidgets($form);
@@ -501,41 +556,29 @@
                         modelFieldName: extra.config.modelFieldName,
                         parentModel: this.parentModel,
                         parentView: this,
-                        $parentViewEl: $thisEl,
+                        $parentViewEl: this$el,
                         valueName: extra.config.valueName
                     });
                 extraView.render();
             }
             $pForm.fadeOut('fast');
         },
-        _extendDataWithExtras: function(data) {
-            if (this.extras !== undefined) {
-                if (this.extras.users !== undefined) {
-                    data.users = this.extras.users.toJSON();
-                }
-                if (this.extras.websites !== undefined) {
-                    data.websites = this.extras.websites.toJSON();
-                }
-                if (this.extras.services !== undefined) {
-                    data.services = this.extras.services.toJSON();
-                }
-            }
-            return data;
-        },
         redrawItems: function() {
             var paginationTemplate = this.templates.compile('pagination'),
                 buttonTemplate = this.templates.compile(this.modelName.toLowerCase() + 'Buttons'),
-                $thisEl = $(this.el);
+                this$el = this.$el;
             this.$('article, .pagelinks, .emptycollection, ul[data-icontainer], .p_form').remove();
             this.$('.loading').fadeOut('fast').remove();
             if (this.collection.models.length > 0) {
-                $thisEl.removeClass('empty');
+                this$el.removeClass('empty');
                 if (this.itemTagName === 'li') {
-                    $itemContainer = $thisEl.find('ul[data-icontainer]');
+                    //$itemContainer = this$el.find('ul[data-icontainer]');
+                    $itemContainer = this.$('ul[data-icontainer]');
                     if ($itemContainer.length === 0) {
                         $itemContainer = $('<ul data-icontainer="1" class="mini list"></ul>').appendTo(this.el);
                     }
                 }
+
                 for (i in this.collection.models) {
                     var model = this.collection.models[i],
                         itemView = new cbb.ItemView({
@@ -544,13 +587,13 @@
                             widgets: this.itemWidgets,
                             model: model
                         });
-    
+
                     if (this.itemTagName === 'li') {
                         $itemContainer.append(itemView.render().el);
                     } else {
-                        $thisEl.append(itemView.render().el);
+                        this$el.append(itemView.render().el);
                     }
-                    if (this.extras !== undefined && typeof this.extras === 'object') {
+                    if (typeof this.extras === 'object') {
                         for (i in this.extras) {
                             var extra = this.extras[i],
                                 config = extra.config,
@@ -567,64 +610,60 @@
                         }
                     }
                     $(itemView.el).trigger('rendered');
-                    this.bind('rendered', function() {
-                        this.trigger('rendered');
-                    }, itemView);
+                    this.on('rendered', function() { this.trigger('rendered'); }, itemView);
                 }
-                $thisEl.append(paginationTemplate({
+                this$el.append(paginationTemplate({
                     model: this.modelName,
                     pageInfo: this.collection.pageInfo()
                 }));
             } else {
-                $thisEl.addClass('empty');
-                $thisEl.append(this.templates.compile('emptyCollection')({
+                this$el.addClass('empty');
+                this$el.append(this.templates.compile('emptyCollection')({
                     modelName: this.modelName
                 }));
             }
             if (this.showButtons) {
-                $thisEl.append(buttonTemplate());
+                this$el.append(buttonTemplate());
             }
             this.trigger('rendered');
-            $thisEl.removeClass('fading');
+            this$el.removeClass('fading');
         }
     });
     cbb.MiniListView = cbb.View.extend({
         initialize: function(options) {
             cbb.View.prototype.initialize.call(this, options);
-            if (options !== undefined) {
-                if (options.allowEmpty !== undefined) {
-                    this.allowEmpty = options.allowEmpty;
-                    delete options.allowEmpty;
-                }
-                if (options.findEl !== undefined) {
-                    this.findEl = options.findEl;
-                    delete options.findEl;
-                }
-                if (options.$parentViewEl !== undefined) {
-                    this.$parentViewEl = options.$parentViewEl;
-                    delete options.$parentViewEl;
-                }
-                if (options.parentView) {
-                    this.parentView = options.parentView;
-                    delete options.parentView;
-                }
-                if (options.keyName !== undefined) {
-                    this.keyName = options.keyName;
-                    delete options.keyName;
-                }
-                if (options.valueName !== undefined) {
-                    this.valueName = options.valueName;
-                    delete options.valueName;
-                }
-                if (options.modelFieldName !== undefined) {
-                    this.modelFieldName = options.modelFieldName;
-                    delete options.modelFieldName;
-                }
+            options = options || {};
+            if (options.allowEmpty !== undefined) {
+                this.allowEmpty = options.allowEmpty;
+                delete options.allowEmpty;
             }
-            this.collection
-                .bind('fetched', this.render, this);
-            this.parentView
-                .bind('rendered', this.render, this);
+            if (options.findEl !== undefined) {
+                this.findEl = options.findEl;
+                delete options.findEl;
+            }
+            if (options.$parentViewEl !== undefined) {
+                this.$parentViewEl = options.$parentViewEl;
+                delete options.$parentViewEl;
+            }
+            if (options.parentView) {
+                this.parentView = options.parentView;
+                delete options.parentView;
+            }
+            if (options.keyName !== undefined) {
+                this.keyName = options.keyName;
+                delete options.keyName;
+            }
+            if (options.valueName !== undefined) {
+                this.valueName = options.valueName;
+                delete options.valueName;
+            }
+            if (options.modelFieldName !== undefined) {
+                this.modelFieldName = options.modelFieldName;
+                delete options.modelFieldName;
+            }
+            this.setElement(this.parentView.$(this.findEl).get(0));
+            this.collection.on('fetched', this.render, this);
+            this.parentView.on('rendered', this.render, this);
         },
         tagName: 'option',
         render: function() {
@@ -645,16 +684,12 @@
         tagName: 'li',
         initialize: function(options) {
             cbb.View.prototype.initialize.call(this, options);
-            if (options !== undefined) {
-                if (options.viewTemplate && typeof options.viewTemplate == 'string') {
-                    this.viewTemplate = this.templates.compile(options.viewTemplate);
-                }
-            }
+            this.compileViewTemplate(options.viewTemplate);
         },
         render: function() {
-            var $thisel = $(this.el);
-            $thisel.html(this.viewTemplate(this.model.toJSON()));
-            this.commonWidgets($thisel);
+            this.$el.html(this.viewTemplate(this.model.toJSON()));
+            this.commonWidgets()
+                .trigger('rendered');
             return this;
         }
     });
