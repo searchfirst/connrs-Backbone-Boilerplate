@@ -351,7 +351,7 @@
                 $inputs = $('input,textarea,select',e.target).not('input[type=submit]'),
                 inputSplitter = /^((\w+)\.)?(\w+)$/,
                 gotoViewOnAdd = this.gotoViewOnAdd,
-                hideFormOnSubmit = this.hideFormOnSubmit,
+                hideFormOnSubmit = this.hideFormOnSubmit === undefined ? true : this.hideFormOnSubmit,
                 thisview = this,
                 model = {};
 
@@ -536,12 +536,16 @@
         fetchingItems: function() {
             this.$el.addClass('fading');
         },
+        _parentModelSerialise: function () {
+            return null;
+        },
         renderAddForm: function(e) {
             e.preventDefault();
             var this$el = this.$el,
                 formTemplate = this.templates.compile(this.modelName.toLowerCase() + 'ItemAdd'),
                 data = {
-                    customer_id: this.collection.params.customer_id
+                    customer_id: this.collection.params.customer_id,
+                    parentModel: this._parentModelSerialise()
                 },
                 $pForm = this$el.find('.p_form'),
                 $form = $(formTemplate(data)).insertBefore($pForm.get(0));
